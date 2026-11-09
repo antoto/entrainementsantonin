@@ -500,13 +500,22 @@ function aggregate(){
 }
 
 /* =====================================================================
-   Chargement : liste du dossier (serveur) → plans.json → fichiers choisis (IndexedDB)
+   Chargement : liens saisis ci-dessous → liste du dossier (serveur) → plans.json
+   → fichiers choisis (IndexedDB)
    ===================================================================== */
+const ODS_LINKS = [
+  'Plan nov-dec 2026.ods',
+];
+
 async function discover(){
-  if (location.protocol === 'file:') return {via:null, list:[], reason:'file'};
   const base = new URL('./', location.href);
   const keep = u => /\.ods$/i.test(u.pathname) && u.href.startsWith(base.href);
   const uniq = arr => { const seen = new Set(); return arr.filter(u => !seen.has(u.href) && seen.add(u.href)); };
+  const manual = uniq(ODS_LINKS.map(link => {
+    try { return new URL(String(link).trim(), base); } catch(e) { return null; }
+  }).filter(u => u && /\.ods$/i.test(u.pathname)));
+  if (manual.length) return {via:'manual', list:manual};
+  if (location.protocol === 'file:') return {via:null, list:[], reason:'file'};
   try{
     const r = await fetch(base.href, {cache:'no-store'});
     if (r.ok){
@@ -794,7 +803,8 @@ function openDetail(id){
 function renderPlans(){
   const d = $('#plans'), disc = state.discovery;
   let info;
-  if (disc.via === 'listing') info = 'Les fichiers .ods du dossier sont lus automatiquement (liste fournie par le serveur).';
+  if (disc.via === 'manual') info = 'Les fichiers .ods sont lus depuis les liens saisis dans la constante ODS_LINKS du code.';
+  else if (disc.via === 'listing') info = 'Les fichiers .ods du dossier sont lus automatiquement (liste fournie par le serveur).';
   else if (disc.via === 'manifest') info = 'Les fichiers sont lus d’après plans.json.';
   else if (disc.reason === 'file') info = 'Page ouverte depuis le disque : le navigateur ne peut pas lister le dossier. Choisissez vos fichiers ci-dessous (ils sont mémorisés), ou utilisez un serveur local.';
   else info = 'Le serveur ne fournit pas la liste des fichiers : ajoutez un plans.json ou choisissez vos fichiers ci-dessous.';
